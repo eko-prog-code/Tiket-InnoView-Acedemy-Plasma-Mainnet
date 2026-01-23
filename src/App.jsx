@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './App.css';
 
-// ABI Smart Contract - Sudah diperbaiki
+// ABI Smart Contract
 const CONTRACT_ABI = [
   {
     "inputs": [],
@@ -588,20 +588,22 @@ const CONTRACT_ABI = [
   }
 ];
 
-// Ganti dengan contract address setelah deploy
 const CONTRACT_ADDRESS = "0xA77B87397f503EdC85452861EeA9411A62F2e090";
 
 function App() {
   const [account, setAccount] = useState('');
   const [contract, setContract] = useState(null);
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [owner, setOwner] = useState('');
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchName, setSearchName] = useState('');
   const [stats, setStats] = useState({ total: 0, sold: 0, available: 0, expired: false });
+  
+  // State untuk public view (tanpa wallet)
+  const [publicTickets, setPublicTickets] = useState([]);
+  const [publicStats, setPublicStats] = useState({ total: 0, sold: 0, available: 0, expired: false });
+  const [publicLoading, setPublicLoading] = useState(true);
   
   // Modal states
   const [showBuyModal, setShowBuyModal] = useState(false);
@@ -613,7 +615,6 @@ function App() {
   const [buyerName, setBuyerName] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [ticketPrice, setTicketPrice] = useState('');
-  const [discountPercent, setDiscountPercent] = useState('10');
   const [updateName, setUpdateName] = useState('');
 
   // Debug state
@@ -621,9 +622,10 @@ function App() {
   const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
+    // Load data public terlebih dahulu
+    loadPublicData();
     checkWalletConnection();
     
-    // Cleanup listeners on unmount
     return () => {
       if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -640,11 +642,34 @@ function App() {
   }, [contract, filter]);
 
   useEffect(() => {
-    // Update debug info when relevant states change
     if (contract && account) {
       updateDebugInfo();
     }
   }, [contract, account, stats, owner]);
+
+  // Load data untuk public view (tanpa wallet)
+  const loadPublicData = async () => {
+    try {
+      setPublicLoading(true);
+      const provider = new ethers.JsonRpcProvider('https://rpc.plasma.to');
+      const publicContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      
+      const ticketList = await publicContract.getAllTickets();
+      const statsData = await publicContract.getTicketStats();
+      
+      setPublicTickets(ticketList);
+      setPublicStats({
+        total: Number(statsData.total),
+        sold: Number(statsData.sold),
+        available: Number(statsData.available),
+        expired: statsData.expired
+      });
+    } catch (error) {
+      console.error('Error loading public data:', error);
+    } finally {
+      setPublicLoading(false);
+    }
+  };
 
   const updateDebugInfo = async () => {
     try {
@@ -703,7 +728,7 @@ function App() {
   const connectWallet = async () => {
     try {
       if (typeof window.ethereum === 'undefined') {
-        alert('Please install MetaMask or compatible wallet!');
+        alert('Silakan install MetaMask atau wallet yang kompatibel!');
         return;
       }
 
@@ -711,7 +736,6 @@ function App() {
         method: 'eth_requestAccounts' 
       });
 
-      // Check if connected to Plasma Mainnet
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       const isPlasma = chainId === '0x2611';
       
@@ -740,12 +764,12 @@ function App() {
               });
             } catch (addError) {
               console.error('Error adding Plasma network:', addError);
-              alert('Please manually switch to Plasma Mainnet (Chain ID: 9763)');
+              alert('Silakan ganti ke Plasma Mainnet (Chain ID: 9763) secara manual');
               return;
             }
           } else {
             console.error('Error switching network:', switchError);
-            alert('Please manually switch to Plasma Mainnet (Chain ID: 9763)');
+            alert('Silakan ganti ke Plasma Mainnet (Chain ID: 9763) secara manual');
             return;
           }
         }
@@ -758,20 +782,15 @@ function App() {
       const ownerAddress = await contract.owner();
       
       setAccount(accounts[0]);
-      setProvider(provider);
-      setSigner(signer);
       setContract(contract);
       setOwner(ownerAddress);
 
-      // Add network change listener
       window.ethereum.on('chainChanged', handleChainChanged);
-
-      // Add account change listener
       window.ethereum.on('accountsChanged', handleAccountsChanged);
 
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      alert('Failed to connect wallet: ' + error.message);
+      alert('Gagal menghubungkan wallet: ' + error.message);
     }
   };
 
@@ -793,7 +812,6 @@ function App() {
       setTickets(ticketList);
     } catch (error) {
       console.error('Error loading tickets:', error);
-      alert('Error loading tickets: ' + error.message);
     }
     setLoading(false);
   };
@@ -802,12 +820,12 @@ function App() {
     if (!contract) return;
     
     try {
-      const stats = await contract.getTicketStats();
+      const statsData = await contract.getTicketStats();
       setStats({
-        total: Number(stats.total),
-        sold: Number(stats.sold),
-        available: Number(stats.available),
-        expired: stats.expired
+        total: Number(statsData.total),
+        sold: Number(statsData.sold),
+        available: Number(statsData.available),
+        expired: statsData.expired
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -821,22 +839,17 @@ function App() {
     setLoading(true);
     try {
       const priceInWei = ethers.parseEther(ticketPrice);
-      console.log('Creating ticket with:', { participantName, priceInWei });
-      
       const tx = await contract.createTicket(participantName, priceInWei);
-      console.log('Transaction sent:', tx.hash);
-      
       await tx.wait();
-      console.log('Transaction confirmed');
       
       alert('🎉 Tiket berhasil dibuat!');
       setShowCreateModal(false);
       setParticipantName('');
       setTicketPrice('');
-      setDiscountPercent('10');
       
       await loadTickets();
       await loadStats();
+      await loadPublicData(); // Refresh public data juga
     } catch (error) {
       console.error('Error creating ticket:', error);
       alert('❌ Gagal membuat tiket: ' + error.message);
@@ -864,6 +877,7 @@ function App() {
       
       await loadTickets();
       await loadStats();
+      await loadPublicData(); // Refresh public data juga
     } catch (error) {
       console.error('Error buying ticket:', error);
       alert('❌ Gagal membeli tiket: ' + error.message);
@@ -886,6 +900,7 @@ function App() {
       setSelectedTicket(null);
       
       await loadTickets();
+      await loadPublicData(); // Refresh public data juga
     } catch (error) {
       console.error('Error updating name:', error);
       alert('❌ Gagal update nama: ' + error.message);
@@ -909,27 +924,20 @@ function App() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = account ? tickets.filter(ticket => {
     if (searchName === '') return true;
     return ticket.participantName.toLowerCase().includes(searchName.toLowerCase()) ||
            ticket.buyerName.toLowerCase().includes(searchName.toLowerCase());
+  }) : publicTickets.filter(ticket => {
+    if (searchName === '') return true;
+    return ticket.participantName.toLowerCase().includes(searchName.toLowerCase());
   });
-
-  const calculateFinalPrice = () => {
-    if (!ticketPrice) return '0';
-    const price = parseFloat(ticketPrice);
-    const discount = parseFloat(discountPercent) || 0;
-    const finalPrice = price - (price * discount / 100);
-    return finalPrice.toFixed(4);
-  };
 
   const isOwner = account && owner && account.toLowerCase() === owner.toLowerCase();
 
   const disconnectWallet = async () => {
     setAccount('');
     setContract(null);
-    setProvider(null);
-    setSigner(null);
     setOwner('');
     setTickets([]);
     setStats({ total: 0, sold: 0, available: 0, expired: false });
@@ -939,8 +947,124 @@ function App() {
     if (contract) {
       await loadTickets();
       await loadStats();
-      alert('✅ Data berhasil di-refresh!');
     }
+    await loadPublicData();
+    alert('✅ Data berhasil di-refresh!');
+  };
+
+  // Fungsi untuk render ticket card (digunakan oleh mode public dan private)
+  const renderTicketCard = (ticket, isPublicMode = false) => {
+    const currentStats = account ? stats : publicStats;
+    const isMyTicket = ticket.buyer && account && 
+      ticket.buyer.toLowerCase() === account.toLowerCase();
+    const isExpired = currentStats.expired;
+    const showDiscountAlert = ticket.id <= 6 && !ticket.isSold;
+    
+    return (
+      <div 
+        key={ticket.id.toString()} 
+        className={`ticket-card ${ticket.isSold ? 'sold' : ''} ${isMyTicket ? 'my-ticket' : ''} ${isExpired ? 'expired' : ''}`}
+      >
+        <div className="ticket-header">
+          <h3 className="ticket-title">
+            🎟 Tiket #{ticket.id.toString()}
+          </h3>
+          <span className={`ticket-status ${
+            isExpired ? 'burned' :
+            isMyTicket ? 'mine' : 
+            ticket.isSold ? 'sold' : 'available'
+          }`}>
+            {isExpired ? '🔥 Event Berakhir' :
+             isMyTicket ? '⭐ Milik Anda' :
+             ticket.isSold ? '✅ Terjual' : '🎟️ Tersedia'}
+          </span>
+        </div>
+
+        <div className="ticket-body">
+          {/* Alert diskon untuk tiket 1-6 */}
+          {showDiscountAlert && (
+            <div className="discount-alert">
+              🎉 <strong>DISKON 10%!</strong> Kamu termasuk 6 pembeli pertama!
+            </div>
+          )}
+
+          <div className="participant-info">
+            <p className="participant-label">👤 Nama Peserta</p>
+            <p className="participant-name">{ticket.participantName}</p>
+            {ticket.participantName === "Peserta Umum" && !ticket.isSold && (
+              <p className="participant-note">
+                ⓘ Tiket tersedia - Klik "Beli" untuk membeli
+              </p>
+            )}
+            {ticket.nameUpdatedByOwner && (
+              <span className="name-badge">Owner Set</span>
+            )}
+          </div>
+
+          {ticket.isSold && ticket.buyerName && ticket.buyerName !== ticket.participantName && (
+            <div className="buyer-info-box">
+              <p className="buyer-label">🧾 Informasi Pembeli:</p>
+              <p className="buyer-detail">Nama: {ticket.buyerName}</p>
+              <p className="buyer-detail">Wallet: {formatAddress(ticket.buyer)}</p>
+              <p className="buyer-detail">
+                Dibayar: {ethers.formatEther(ticket.finalPrice)} XPL
+              </p>
+            </div>
+          )}
+
+          <div className="ticket-price">
+            <p className="price-label">💰 Harga</p>
+            <p className="price-value">
+              {ethers.formatEther(ticket.finalPrice)} XPL
+            </p>
+            {ticket.id <= 6 && !ticket.isSold && (
+              <span className="discount-badge">🎉 Diskon 10%</span>
+            )}
+          </div>
+
+          {!isExpired && !ticket.isSold && (
+            isPublicMode ? (
+              <div className="buy-cta">
+                <p className="cta-text">🔓 Hubungkan wallet untuk membeli</p>
+                <button
+                  onClick={connectWallet}
+                  className="btn btn-buy"
+                >
+                  🔗 Connect & Beli
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedTicket(ticket);
+                  setShowBuyModal(true);
+                }}
+                className="btn btn-buy"
+              >
+                🛒 Beli Sekarang
+              </button>
+            )
+          )}
+
+          {isMyTicket && (
+            <div className="my-ticket-badge">
+              ⭐ Anda yang membeli tiket ini
+            </div>
+          )}
+
+          <div className="ticket-footer">
+            <p className="ticket-date">
+              🕐 Dibuat: {formatDate(ticket.createdAt)}
+            </p>
+            {ticket.isSold && (
+              <p className="ticket-date">
+                📅 Dibeli: {formatDate(ticket.soldAt)}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1011,10 +1135,23 @@ function App() {
               <div>
                 <p className="event-label">Status Event</p>
                 <p className="event-value">
-                  {stats.expired ? '❌ Event Berakhir' : '✅ Masih Berlangsung'}
+                  {publicStats.expired ? '❌ Event Berakhir' : '✅ Masih Berlangsung'}
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Promo Banner - Tampilkan untuk semua */}
+      <div className="promo-banner-container">
+        <div className="container">
+          <div className="promo-banner">
+            💥 <strong>DISKON 10% – HANYA UNTUK 6 ORANG TERCEPAT!</strong>
+            <br/>
+            <small>Tiket #1-6 dapat harga spesial! Buruan klik "🛒 Beli Sekarang" sebelum slot diskon habis! ⏳</small>
+            <br/>
+            <small><strong>Sisa slot diskon:</strong> {Math.max(0, 6 - publicStats.sold)} dari 6 slot</small>
           </div>
         </div>
       </div>
@@ -1047,73 +1184,114 @@ function App() {
                 >
                   🔄 Refresh Data
                 </button>
-                <button 
-                  onClick={() => console.log('Contract:', contract, 'Signer:', signer)}
-                  className="btn btn-outline btn-sm"
-                >
-                  📝 Log ke Console
-                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stats */}
-      {account && (
-        <div className="stats-section">
-          <div className="container">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-icon">🎫</div>
-                <div className="stat-info">
-                  <p className="stat-label">Total Tiket</p>
-                  <p className="stat-value">{stats.total}/20</p>
-                </div>
+      {/* Stats - Tampilkan untuk semua */}
+      <div className="stats-section">
+        <div className="container">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon">🎫</div>
+              <div className="stat-info">
+                <p className="stat-label">Total Tiket</p>
+                <p className="stat-value">{publicStats.total}/20</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-icon">✅</div>
-                <div className="stat-info">
-                  <p className="stat-label">Terjual</p>
-                  <p className="stat-value">{stats.sold}</p>
-                </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">✅</div>
+              <div className="stat-info">
+                <p className="stat-label">Terjual</p>
+                <p className="stat-value">{publicStats.sold}</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-icon">🎟️</div>
-                <div className="stat-info">
-                  <p className="stat-label">Tersedia</p>
-                  <p className="stat-value">{stats.available}</p>
-                </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">🎟️</div>
+              <div className="stat-info">
+                <p className="stat-label">Tersedia</p>
+                <p className="stat-value">{publicStats.available}</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-icon">⏰</div>
-                <div className="stat-info">
-                  <p className="stat-label">Status</p>
-                  <p className="stat-value">
-                    {stats.expired ? 'Berakhir' : 'Aktif'}
-                  </p>
-                </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">⏰</div>
+              <div className="stat-info">
+                <p className="stat-label">Status</p>
+                <p className="stat-value">
+                  {publicStats.expired ? 'Berakhir' : 'Aktif'}
+                </p>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Main Content */}
       <main className="main-content">
         <div className="container">
+          {/* MODE PUBLIC - Tanpa Wallet */}
           {!account ? (
-            <div className="empty-state">
-              <div className="empty-icon">🔐</div>
-              <h2>Hubungkan Wallet Anda</h2>
-              <p>Silakan hubungkan wallet Plasma untuk melihat dan membeli tiket</p>
-              <button onClick={connectWallet} className="btn btn-primary" style={{ marginTop: '1rem' }}>
-                🔗 Connect Wallet Plasma
-              </button>
-            </div>
-          ) : (
             <>
-              {/* Controls */}
+              <div className="public-notice">
+                <h3>🎟️ Lihat Tiket Tersedia</h3>
+                <p>Hubungkan wallet untuk membeli tiket</p>
+                <button onClick={connectWallet} className="btn btn-primary">
+                  🔗 Connect Wallet untuk Beli
+                </button>
+              </div>
+              
+              {/* Filters untuk public mode */}
+              <div className="filters">
+                <div className="search-box">
+                  <span className="search-icon">🔎</span>
+                  <input
+                    type="text"
+                    placeholder="Cari nama peserta..."
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+
+                <select 
+                  value={filter} 
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">📋 Tampilkan Semua Tiket</option>
+                  <option value="available">🎟️ Tiket Tersedia</option>
+                  <option value="sold">✅ Tiket Terjual</option>
+                </select>
+              </div>
+
+              {/* Tickets Grid untuk public */}
+              {publicLoading ? (
+                <div className="loading">
+                  <div className="loader"></div>
+                  <p>Memuat tiket...</p>
+                </div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">🎫</div>
+                  <h2>Belum Ada Tiket</h2>
+                  <p>
+                    {filter === 'available' ? 'Tidak ada tiket tersedia saat ini' :
+                     filter === 'sold' ? 'Belum ada tiket yang terjual' :
+                     'Owner belum membuat tiket'}
+                  </p>
+                </div>
+              ) : (
+                <div className="tickets-grid">
+                  {filteredTickets.map(ticket => renderTicketCard(ticket, true))}
+                </div>
+              )}
+            </>
+          ) : (
+            /* MODE PRIVATE - Dengan Wallet */
+            <>
+              {/* Controls untuk owner */}
               <div className="controls">
                 <div className="controls-top">
                   {isOwner && (
@@ -1200,7 +1378,7 @@ function App() {
                 )}
               </div>
 
-              {/* Tickets Grid */}
+              {/* Tickets Grid untuk private mode */}
               {loading ? (
                 <div className="loading">
                   <div className="loader"></div>
@@ -1219,98 +1397,7 @@ function App() {
                 </div>
               ) : (
                 <div className="tickets-grid">
-                  {filteredTickets.map((ticket) => {
-                    const isMyTicket = ticket.buyer && 
-                      ticket.buyer.toLowerCase() === account.toLowerCase();
-                    const isExpired = stats.expired;
-                    
-                    return (
-                      <div 
-                        key={ticket.id.toString()} 
-                        className={`ticket-card ${ticket.isSold ? 'sold' : ''} ${isMyTicket ? 'my-ticket' : ''} ${isExpired ? 'expired' : ''}`}
-                      >
-                        <div className="ticket-header">
-                          <h3 className="ticket-title">
-                            🎟 Tiket #{ticket.id.toString()}
-                          </h3>
-                          <span className={`ticket-status ${
-                            isExpired ? 'burned' :
-                            isMyTicket ? 'mine' : 
-                            ticket.isSold ? 'sold' : 'available'
-                          }`}>
-                            {isExpired ? '🔥 Event Berakhir' :
-                             isMyTicket ? '⭐ Milik Anda' :
-                             ticket.isSold ? '✅ Terjual' : '🎟️ Tersedia'}
-                          </span>
-                        </div>
-
-                        <div className="ticket-body">
-                          <div className="participant-info">
-                            <p className="participant-label">👤 Nama Peserta</p>
-                            <p className="participant-name">{ticket.participantName}</p>
-                            {ticket.participantName === "Peserta Umum" && !ticket.isSold && (
-                              <p className="participant-note">
-                                ⓘ Tiket tersedia - Klik "Beli" untuk membeli
-                              </p>
-                            )}
-                            {ticket.nameUpdatedByOwner && (
-                              <span className="name-badge">Owner Set</span>
-                            )}
-                          </div>
-
-                          {ticket.isSold && ticket.buyerName && ticket.buyerName !== ticket.participantName && (
-                            <div className="buyer-info-box">
-                              <p className="buyer-label">🧾 Informasi Pembeli:</p>
-                              <p className="buyer-detail">Nama: {ticket.buyerName}</p>
-                              <p className="buyer-detail">Wallet: {formatAddress(ticket.buyer)}</p>
-                              <p className="buyer-detail">
-                                Dibayar: {ethers.formatEther(ticket.finalPrice)} XPL
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="ticket-price">
-                            <p className="price-label">💰 Harga</p>
-                            <p className="price-value">
-                              {ethers.formatEther(ticket.finalPrice)} XPL
-                            </p>
-                            {ticket.id <= 6 && !ticket.isSold && (
-                              <span className="discount-badge">🎉 Diskon 10%</span>
-                            )}
-                          </div>
-
-                          {!isExpired && !ticket.isSold && (
-                            <button
-                              onClick={() => {
-                                setSelectedTicket(ticket);
-                                setShowBuyModal(true);
-                              }}
-                              className="btn btn-buy"
-                            >
-                              🛒 Beli Sekarang
-                            </button>
-                          )}
-
-                          {isMyTicket && (
-                            <div className="my-ticket-badge">
-                              ⭐ Anda yang membeli tiket ini
-                            </div>
-                          )}
-
-                          <div className="ticket-footer">
-                            <p className="ticket-date">
-                              🕐 Dibuat: {formatDate(ticket.createdAt)}
-                            </p>
-                            {ticket.isSold && (
-                              <p className="ticket-date">
-                                📅 Dibeli: {formatDate(ticket.soldAt)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {filteredTickets.map(ticket => renderTicketCard(ticket, false))}
                 </div>
               )}
             </>
@@ -1333,6 +1420,12 @@ function App() {
             </div>
             
             <form onSubmit={buyTicket} className="modal-form">
+              {selectedTicket.id <= 6 && (
+                <div className="discount-notice">
+                  🚀 <strong>HEBAT!</strong> Kamu mendapatkan DISKON 10% sebagai pembeli cepat!
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Nama Lengkap Pembeli *</label>
                 <input

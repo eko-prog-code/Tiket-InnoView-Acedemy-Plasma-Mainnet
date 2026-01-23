@@ -808,3 +808,137 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-dark);
 }
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+@media (max-width: 640px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .wallet-info {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .controls-top {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .owner-actions,
+  .right-controls {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .owner-actions button,
+  .right-controls a,
+  .right-controls button {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+  
+  .tickets-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ===== DARK MODE SUPPORT ===== */
+@media (prefers-color-scheme: dark) {
+  .ticket-card {
+    background: #1f2937;
+    color: #f3f4f6;
+  }
+  
+  .search-input,
+  .filter-select {
+    background: #374151;
+    border-color: #4b5563;
+    color: white;
+  }
+  
+  .search-input:focus,
+  .filter-select:focus {
+    background: #4b5563;
+    border-color: #8b5cf6;
+  }
+  
+  .buy-cta {
+    background: linear-gradient(135deg, #374151, #4b5563);
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .header,
+  .event-banner,
+  .promo-banner-container,
+  .debug-panel,
+  .controls,
+  .btn,
+  .modal-overlay {
+    display: none !important;
+  }
+  
+  .ticket-card {
+    break-inside: avoid;
+    border: 1px solid #000;
+  }
+  
+  .stats-section {
+    page-break-before: always;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== FOCUS VISIBLE ===== */
+:focus-visible {
+  outline: 3px solid #8b5cf6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ===== CUSTOM SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border-radius: 10px;
+  border: 3px solid #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+}
+
+/* ===== SELECTION STYLES ===== */
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: inherit;
+}
