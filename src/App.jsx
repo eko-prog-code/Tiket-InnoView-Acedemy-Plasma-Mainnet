@@ -1653,7 +1653,7 @@ function App() {
       {/* WhatsApp Floating Button */}
       <div className="whatsapp-float">
         <a 
-          href="https://wa.me/6281234567890" // Ganti dengan nomor WhatsApp Anda
+          href="https://wa.me/62895600394345" // Ganti dengan nomor WhatsApp Anda
           target="_blank" 
           rel="noopener noreferrer"
           className="whatsapp-link"
