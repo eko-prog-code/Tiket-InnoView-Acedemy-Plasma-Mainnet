@@ -588,7 +588,7 @@ const CONTRACT_ABI = [
   }
 ];
 
-const CONTRACT_ADDRESS = "0xA77B87397f503EdC85452861EeA9411A62F2e090";
+const CONTRACT_ADDRESS = "0xd2F4d2965CCa9959A2E5425A4f3d51c6c557F44C";
 
 function App() {
   const [account, setAccount] = useState('');
