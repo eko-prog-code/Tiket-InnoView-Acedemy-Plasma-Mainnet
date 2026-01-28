@@ -780,36 +780,7 @@ body {
   }
 }
 
-/* Smooth Scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Selection */
-::selection {
-  background: var(--primary);
-  color: var(--white);
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--light);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-dark);
-}
-
-/* ===== MOBILE OPTIMIZATIONS ===== */
+/* MOBILE OPTIMIZATIONS */
 @media (max-width: 640px) {
   .header-content {
     flex-direction: column;
@@ -827,15 +798,12 @@ html {
     gap: 1rem;
   }
   
-  .owner-actions,
-  .right-controls {
+  .owner-actions {
     width: 100%;
     justify-content: center;
   }
   
-  .owner-actions button,
-  .right-controls a,
-  .right-controls button {
+  .owner-actions button {
     width: 100%;
     margin: 0.25rem 0;
   }
@@ -849,8 +817,21 @@ html {
   }
 }
 
-/* ===== DARK MODE SUPPORT ===== */
+/* DARK MODE SUPPORT */
 @media (prefers-color-scheme: dark) {
+  :root {
+    --dark: #f3f4f6;
+    --light: #1f2937;
+    --white: #111827;
+    --border: #374151;
+    --shadow: rgba(255, 255, 255, 0.1);
+  }
+  
+  body {
+    background: linear-gradient(to bottom, #111827, #1f2937);
+    color: #f3f4f6;
+  }
+  
   .ticket-card {
     background: #1f2937;
     color: #f3f4f6;
@@ -868,18 +849,12 @@ html {
     background: #4b5563;
     border-color: #8b5cf6;
   }
-  
-  .buy-cta {
-    background: linear-gradient(135deg, #374151, #4b5563);
-  }
 }
 
-/* ===== PRINT STYLES ===== */
+/* PRINT STYLES */
 @media print {
   .header,
   .event-banner,
-  .promo-banner-container,
-  .debug-panel,
   .controls,
   .btn,
   .modal-overlay {
@@ -890,13 +865,9 @@ html {
     break-inside: avoid;
     border: 1px solid #000;
   }
-  
-  .stats-section {
-    page-break-before: always;
-  }
 }
 
-/* ===== ACCESSIBILITY ===== */
+/* ACCESSIBILITY */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -905,14 +876,14 @@ html {
   }
 }
 
-/* ===== FOCUS VISIBLE ===== */
+/* FOCUS VISIBLE */
 :focus-visible {
   outline: 3px solid #8b5cf6;
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ===== CUSTOM SCROLLBAR ===== */
+/* CUSTOM SCROLLBAR */
 ::-webkit-scrollbar {
   width: 12px;
 }
@@ -932,13 +903,8 @@ html {
   background: linear-gradient(135deg, #7c3aed, #db2777);
 }
 
-/* ===== SELECTION STYLES ===== */
+/* SELECTION STYLES */
 ::selection {
-  background: rgba(139, 92, 246, 0.3);
-  color: inherit;
-}
-
-::-moz-selection {
   background: rgba(139, 92, 246, 0.3);
   color: inherit;
 }
@@ -1082,6 +1048,6 @@ html {
   }
   
   .whatsapp-tooltip {
-    display: none; /* Sembunyikan tooltip di mobile kecil */
+    display: none;
   }
-
+}
