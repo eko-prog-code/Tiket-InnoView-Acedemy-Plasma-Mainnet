@@ -233,7 +233,7 @@ const CONTRACT_ABI = [
       },
       {
         "internalType": "uint256",
-        "name": "_price",
+        name: "_price",
         "type": "uint256"
       }
     ],
@@ -1650,7 +1650,7 @@ function App() {
         </div>
       )}
 
-            {/* WhatsApp Floating Button */}
+      {/* WhatsApp Floating Button */}
       <div className="whatsapp-float">
         <a 
           href="https://wa.me/6281234567890" // Ganti dengan nomor WhatsApp Anda
@@ -1665,10 +1665,7 @@ function App() {
           <span className="whatsapp-tooltip">Chat with us</span>
         </a>
       </div>
-    </div>
-  );
-}
-      
+
       {/* Footer */}
       <footer className="footer">
         <div className="container">
